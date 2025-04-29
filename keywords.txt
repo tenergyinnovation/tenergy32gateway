@@ -1,0 +1,25 @@
+tenergy32hub    # Class name for the main library
+begin           # Method to initialize the library
+update          # Method to update the library state
+getSensorData   # Method to retrieve sensor data
+OLEDDisplay     # Class name for the OLED display component
+init            # Method to initialize the OLED display
+displayText     # Method to display text on the OLED
+clearDisplay    # Method to clear the OLED display
+LoRaModule      # Class name for the LoRa module component
+sendData        # Method to send data via LoRa
+receiveData     # Method to receive data via LoRa
+Relay           # Class name for the relay component
+turnOn          # Method to turn on the relay
+turnOff         # Method to turn off the relay
+RS485           # Class name for the RS485 communication component
+send            # Method to send data via RS485
+receive         # Method to receive data via RS485
+Potentiometer   # Class name for the potentiometer component
+readValue       # Method to read the value from the potentiometer
+MotionSensor    # Class name for the motion sensor component
+isMotionDetected # Method to check if motion is detected
+WaterLeakSensor # Class name for the water leak sensor component
+isLeakDetected  # Method to check if a leak is detected
+I2CUtils        # Class name for I2C utility functions
+SPIUtils        # Class name for SPI utility functions

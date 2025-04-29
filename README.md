@@ -1,2 +1,2 @@
 # tenergy32gateway
-Smart building 360 (Gateway board) library
+Tenergy32gateway IoT board
