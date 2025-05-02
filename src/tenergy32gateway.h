@@ -7,8 +7,10 @@
  * Hardware     :     tenergy32gateway
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29/04/2025
- * Revision     :     1.0
+ * Revision     :     1.1
  * Rev1.0       :     Original
+ * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
+                :     Add Example for RTC test
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -78,7 +80,7 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "1.0";
+    const String _version = "1.1";
 
 public:
     Tenergy32GateWay();
