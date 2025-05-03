@@ -11,6 +11,7 @@
  * Rev1.0       :     Original
  * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
                 :     Add Example for RTC test
+ * Rev2.0       :     Include Ethernet library
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -26,6 +27,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <Ticker.h> // Include Ticker library
 #include <RTClib.h>
+#include <Ethernet.h>
 
 // PIN definitions (ปรับปรุงตามข้อมูลบอร์ด)
 // Tactile Switches (SW1, SW2) สำหรับเขียนโปรแกรมและทดสอบ
@@ -80,10 +82,15 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "1.1";
+    const String _version = "2.0";
 
 public:
     Tenergy32GateWay();
+    
+    // show the library version
+    void showLibraryVersion();
+
+    // Initialize the Tenergy32 Gateway board
     bool begin(uint32_t loraFreq = 443E6);
 
     // Switches and sensors
@@ -187,6 +194,11 @@ public:
     const int _daylightOffset_sec = 0;
     const uint8_t _daysInMonth[12] PROGMEM = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     const char _daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+    bool initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, uint8_t *subnet, bool useDHCP = true);
+    bool initEternet(uint8_t *mac, bool useDHCP = true);
+    bool initEternet(uint8_t *mac, uint8_t *ip, bool useDHCP = true);
+    bool initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, bool useDHCP = true);
 };
 
 #endif // TENERGY32GATEWAY_H

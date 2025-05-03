@@ -1,6 +1,7 @@
 // File: tenergy32gateway.cpp
 #include "tenergy32gateway.h"
 #include <RTClib.h>
+#include <Ethernet.h>
 
 // Initialize static instance pointer to NULL.
 Tenergy32GateWay *Tenergy32GateWay::_instance = nullptr;
@@ -15,6 +16,27 @@ Tenergy32GateWay::Tenergy32GateWay() : _oled(nullptr), _lcd(nullptr),
     _instance = this;
 }
 
+
+/***********************************************************************
+ * FUNCTION:    showLibraryVersion
+ * DESCRIPTION: Displays the library version on the serial monitor and OLED.
+ * PARAMETERS:  None
+ * RETURNED:    None
+ ***********************************************************************/
+void Tenergy32GateWay::showLibraryVersion()
+{
+    Serial.print("Tenergy32GateWay Library Version: ");
+    Serial.println(_version);
+    if (_oled)
+    {
+        _oled->clearDisplay();
+        _oled->setCursor(0, 0);
+        _oled->println("Tenergy32GateWay");
+        _oled->println("Library Version:");
+        _oled->println(_version);
+        _oled->display();
+    }
+}
 /***********************************************************************
  * FUNCTION:    begin
  * DESCRIPTION: Initializes the Tenergy32GateWay hardware.
@@ -54,7 +76,6 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
     _oled->display();
     vTaskDelay(1000);
 
-    
     // Initialize LoRa module
     Serial.println("Initializing LoRa...");
     if (_oled)
@@ -146,8 +167,101 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
         }
     }
     vTaskDelay(1000);
-    // -------------------------------
 
+   // --- Ethernet Initialization ---
+Serial.println("Initializing Ethernet...");
+
+// กำหนด MAC address และเตรียม array สำหรับ IP, GW, Subnet
+uint8_t mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+uint8_t ip[4];
+uint8_t gw[4];
+uint8_t subnet[4];
+
+// ใช้งาน DHCP (useDHCP = true) หรือใช้ static (useDHCP = false)
+if (!initEternet(mac, ip, gw, subnet, true))  // เปลี่ยนพารามิเตอร์สุดท้ายเป็น false สำหรับ static
+{
+    Serial.println("Ethernet initialization failed.");
+    if (_oled)
+    {
+        _oled->clearDisplay();
+        _oled->setCursor(0, 0);
+        _oled->println("Ethernet Fail");
+        _oled->display();
+        vTaskDelay(1000);
+    }
+}
+else
+{
+    Serial.println("Ethernet configured successfully.");
+    Serial.print("IP: ");
+    Serial.print(Ethernet.localIP()[0]);
+    Serial.print(".");
+    Serial.print(Ethernet.localIP()[1]);
+    Serial.print(".");
+    Serial.print(Ethernet.localIP()[2]);
+    Serial.print(".");
+    Serial.print(Ethernet.localIP()[3]);
+    Serial.print("  GW: ");
+    Serial.print(Ethernet.gatewayIP()[0]);
+    Serial.print(".");
+    Serial.print(Ethernet.gatewayIP()[1]);
+    Serial.print(".");
+    Serial.print(Ethernet.gatewayIP()[2]);
+    Serial.print(".");
+    Serial.print(Ethernet.gatewayIP()[3]);
+    Serial.print("  SN: ");
+    Serial.print(Ethernet.subnetMask()[0]);
+    Serial.print(".");
+    Serial.print(Ethernet.subnetMask()[1]);
+    Serial.print(".");
+    Serial.print(Ethernet.subnetMask()[2]);
+    Serial.print(".");
+    Serial.println(Ethernet.subnetMask()[3]);
+    Serial.print("DNS: ");
+    Serial.print(Ethernet.dnsServerIP()[0]);
+    Serial.print(".");
+    Serial.print(Ethernet.dnsServerIP()[1]);
+    Serial.print(".");
+    Serial.print(Ethernet.dnsServerIP()[2]);
+    Serial.print(".");
+    Serial.print(Ethernet.dnsServerIP()[3]);
+    Serial.println();
+    Serial.print("MAC: ");
+    Serial.print(mac[0], HEX);
+    Serial.print(":");
+    Serial.print(mac[1], HEX);
+    Serial.print(":");
+    Serial.print(mac[2], HEX);
+    Serial.print(":");
+    Serial.print(mac[3], HEX);
+    Serial.print(":");
+    Serial.print(mac[4], HEX);
+    Serial.print(":");
+    Serial.print(mac[5], HEX);
+    Serial.println();
+
+    // แสดงผลข้อมูลบน OLED
+    if (_oled)
+    {
+        _oled->clearDisplay();
+        _oled->setTextSize(1);
+        _oled->setTextColor(SSD1306_WHITE);
+        _oled->setCursor(0, 0);
+        _oled->println("Ethernet OK");
+        _oled->setCursor(0, 8);
+        _oled->print("IP: ");
+        _oled->println(Ethernet.localIP());
+        _oled->setCursor(0, 16);
+        _oled->print("GW: ");
+        _oled->println(Ethernet.gatewayIP());
+        _oled->setCursor(0, 24);
+        _oled->print("SN: ");
+        _oled->println(Ethernet.subnetMask());
+        _oled->display();
+        vTaskDelay(1000);
+    }
+}
+    // -------------------------------
 
     // Set up remaining peripheral pins: switches and relay pins
     Serial.println("Setting additional peripheral pin modes...");
@@ -176,6 +290,10 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
         vTaskDelay(1000);
     }
 
+    // Show the library version on the OLED
+    showLibraryVersion();
+    vTaskDelay(1000);
+    
     beep(2, 100);
     return true;
 }
@@ -815,4 +933,198 @@ uint16_t Tenergy32GateWay::getTimestamp(void)
         return 0;
     DateTime now = _rtc->now();
     return (uint16_t)(now.unixtime() % 65536);
+}
+
+/***********************************************************************
+ * FUNCTION:    initEternet
+ * DESCRIPTION: Initializes the Ethernet module with DHCP or static IP.
+ * PARAMETERS:  mac - pointer to MAC address,
+ *              ip - pointer to IP address,
+ *              gw - pointer to gateway address,
+ *              subnet - pointer to subnet mask,
+ *              useDHCP - true for DHCP, false for static IP.
+ * RETURNED:    true if initialization is successful, false otherwise.
+ ***********************************************************************/
+bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, uint8_t *subnet, bool useDHCP)
+{
+    // ตั้งค่าขา CS สำหรับโมดูล W5500 และเริ่มต้น SPI
+    pinMode(PIN_W5500_ENABLE, OUTPUT);
+    digitalWrite(PIN_W5500_ENABLE, LOW);
+    Ethernet.init(PIN_W5500_ENABLE);
+    
+    if (useDHCP)
+    {
+        // เริ่มต้น Ethernet โดยใช้ DHCP
+        Ethernet.begin(mac);
+        // รอให้การรับค่า DHCP เสร็จสิ้น
+        delay(2000);
+    
+        // ตรวจสอบว่ามีการรับค่า IP จาก DHCP หรือไม่
+        IPAddress local = Ethernet.localIP();
+        if (local == IPAddress(0, 0, 0, 0))
+        {
+            Serial.println("DHCP configuration failed.");
+            return false;
+        }
+    
+        // คัดลอกค่า IP, gateway และ subnet mask ที่ได้จาก DHCP กลับไปยัง array ที่ส่งเข้ามา
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            ip[i]     = local[i];
+            gw[i]     = Ethernet.gatewayIP()[i];
+            subnet[i] = Ethernet.subnetMask()[i];
+        }
+    
+        Serial.println("Ethernet configured successfully with DHCP.");
+    }
+    else
+    {
+        // สำหรับการตั้งค่า Static IP ต้องมีค่า IP, gateway และ subnet ผ่าน array ที่ส่งเข้ามา
+        IPAddress ip_addr(ip[0], ip[1], ip[2], ip[3]);
+        IPAddress gw_addr(gw[0], gw[1], gw[2], gw[3]);
+        IPAddress subnet_addr(subnet[0], subnet[1], subnet[2], subnet[3]);
+        // กำหนด DNS เริ่มต้น (เช่น Google DNS)
+        IPAddress dns(8, 8, 8, 8);
+    
+        Ethernet.begin(mac, ip_addr, dns, gw_addr, subnet_addr);
+        delay(1000);
+    
+        IPAddress local = Ethernet.localIP();
+        if (local == IPAddress(0, 0, 0, 0))
+        {
+            Serial.println("Static IP configuration failed.");
+            return false;
+        }
+    
+        // คัดลอกค่า IP, gateway และ subnet mask กลับไปยัง array (อาจมีประโยชน์ในการตรวจสอบ)
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            ip[i]     = local[i];
+            gw[i]     = Ethernet.gatewayIP()[i];
+            subnet[i] = Ethernet.subnetMask()[i];
+        }
+    
+        Serial.println("Ethernet configured successfully with static IP.");
+    }
+    return true;
+}
+
+/***********************************************************************
+ * FUNCTION:    initEternet
+ * DESCRIPTION: Initializes the Ethernet module with DHCP or static IP.
+ * PARAMETERS:  mac - pointer to MAC address,
+ *              useDHCP - true for DHCP, false for static IP.
+ * RETURNED:    true if initialization is successful, false otherwise.
+ ***********************************************************************/
+bool Tenergy32GateWay::initEternet(uint8_t *mac, bool useDHCP)
+{
+    // Set CS pin for W5500 and begin SPI
+    pinMode(PIN_W5500_ENABLE, OUTPUT);
+    digitalWrite(PIN_W5500_ENABLE, LOW);
+    Ethernet.init(PIN_W5500_ENABLE);
+
+    if (useDHCP)
+    {
+        // Start Ethernet using DHCP
+        Ethernet.begin(mac);
+        delay(2000);
+
+        // Check if DHCP succeeded by verifying local IP
+        IPAddress local = Ethernet.localIP();
+        if (local == IPAddress(0,0,0,0))
+        {
+            Serial.println("DHCP configuration failed.");
+            return false;
+        }
+
+        Serial.println("Ethernet configured successfully with DHCP.");
+    }
+    else
+    {
+        // Static configuration requires IP, gw, and subnet arrays.
+        Serial.println("Static IP configuration requires full parameters!");
+        return false;
+    }
+    return true;
+}
+
+/***********************************************************************
+ * FUNCTION:    initEternet
+ * DESCRIPTION: Initializes the Ethernet module with DHCP or static IP.
+ * PARAMETERS:  mac - pointer to MAC address,
+ *              ip - pointer to IP address,
+ *              useDHCP - true for DHCP, false for static IP.
+ * RETURNED:    true if initialization is successful, false otherwise.
+ ***********************************************************************/
+bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, bool useDHCP)
+{
+    // Set CS pin for W5500 and begin SPI
+    pinMode(PIN_W5500_ENABLE, OUTPUT);
+    digitalWrite(PIN_W5500_ENABLE, LOW);
+    Ethernet.init(PIN_W5500_ENABLE);
+
+    if (useDHCP)
+    {
+        // Start Ethernet using DHCP
+        Ethernet.begin(mac);
+        delay(2000);
+
+        // Check if DHCP succeeded by verifying local IP
+        IPAddress local = Ethernet.localIP();
+        if (local == IPAddress(0, 0, 0, 0))
+        {
+            Serial.println("DHCP configuration failed.");
+            return false;
+        }
+
+        Serial.println("Ethernet configured successfully with DHCP.");
+    }
+    else
+    {
+        // Static configuration requires IP, gw, and subnet arrays.
+        Serial.println("Static IP configuration requires full parameters!");
+        return false;
+    }
+    return true;
+}
+
+/***********************************************************************
+ * FUNCTION:    initEternet
+ * DESCRIPTION: Initializes the Ethernet module with DHCP or static IP.
+ * PARAMETERS:  mac - pointer to MAC address,
+ *              ip - pointer to IP address,
+ *              gw - pointer to gateway address,
+ *              useDHCP - true for DHCP, false for static IP.
+ * RETURNED:    true if initialization is successful, false otherwise.
+ ***********************************************************************/
+bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, bool useDHCP)
+{
+    // Set CS pin for W5500 and begin SPI
+    pinMode(PIN_W5500_ENABLE, OUTPUT);
+    digitalWrite(PIN_W5500_ENABLE, LOW);
+    Ethernet.init(PIN_W5500_ENABLE);
+
+    if (useDHCP)
+    {
+        // Start Ethernet using DHCP
+        Ethernet.begin(mac);
+        delay(2000);
+
+        // Check if DHCP succeeded by verifying local IP
+        IPAddress local = Ethernet.localIP();
+        if (local == IPAddress(0, 0, 0, 0))
+        {
+            Serial.println("DHCP configuration failed.");
+            return false;
+        }
+
+        Serial.println("Ethernet configured successfully with DHCP.");
+    }
+    else
+    {
+        // Static configuration requires IP, gw, and subnet arrays.
+        Serial.println("Static IP configuration requires full parameters!");
+        return false;
+    }
+    return true;
 }
