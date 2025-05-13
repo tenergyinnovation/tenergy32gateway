@@ -44,11 +44,11 @@ void Tenergy32GateWay::showLibraryVersion()
  *              Sets up serial communication, pin modes, I2C bus, OLED display,
  *              LoRa module, RTC, and (optionally) Ethernet.
  * PARAMETERS:
- *      loraFreq - Frequency for LoRa communication (default is 443E6)
  *      useEthernet - true = initialize Ethernet, false = skip Ethernet
+ *      loraFreq - Frequency for LoRa communication (default is 443E6)
  * RETURNED:    true if all initializations are successful, false otherwise.
  ***********************************************************************/
-bool Tenergy32GateWay::begin(uint32_t loraFreq, bool useEthernet)
+bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
 {
     // Initialize serial communication
     Serial.begin(115200);
