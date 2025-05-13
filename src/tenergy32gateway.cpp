@@ -16,7 +16,6 @@ Tenergy32GateWay::Tenergy32GateWay() : _oled(nullptr), _lcd(nullptr),
     _instance = this;
 }
 
-
 /***********************************************************************
  * FUNCTION:    showLibraryVersion
  * DESCRIPTION: Displays the library version on the serial monitor and OLED.
@@ -37,15 +36,19 @@ void Tenergy32GateWay::showLibraryVersion()
         _oled->display();
     }
 }
+
+// ...existing code...
 /***********************************************************************
  * FUNCTION:    begin
  * DESCRIPTION: Initializes the Tenergy32GateWay hardware.
  *              Sets up serial communication, pin modes, I2C bus, OLED display,
- *              LoRa module, and provides final status messages.
- * PARAMETERS:  loraFreq - Frequency for LoRa communication (default is 443E6)
+ *              LoRa module, RTC, and (optionally) Ethernet.
+ * PARAMETERS:
+ *      loraFreq - Frequency for LoRa communication (default is 443E6)
+ *      useEthernet - true = initialize Ethernet, false = skip Ethernet
  * RETURNED:    true if all initializations are successful, false otherwise.
  ***********************************************************************/
-bool Tenergy32GateWay::begin(uint32_t loraFreq)
+bool Tenergy32GateWay::begin(uint32_t loraFreq, bool useEthernet)
 {
     // Initialize serial communication
     Serial.begin(115200);
@@ -95,8 +98,7 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
         Serial.println("Failed to initialize LoRa");
         if (_oled)
         {
-            _oled->clearDisplay();
-            _oled->setCursor(0, 0);
+            _oled->setCursor(0, 10);
             _oled->println("LoRa Init Fail");
             _oled->display();
             vTaskDelay(1000);
@@ -108,15 +110,14 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
         Serial.println("LoRa initialized successfully.");
         if (_oled)
         {
-            _oled->clearDisplay();
-            _oled->setCursor(0, 0);
+            _oled->setCursor(0, 10);
             _oled->println("LoRa OK");
             _oled->display();
             vTaskDelay(1000);
         }
     }
 
-    // --- Added RTC initialization ---
+    // RTC initialization
     Serial.println("Initializing RTC...");
     _rtc = new RTC_DS3231();
     if (!_rtc->begin())
@@ -124,8 +125,7 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
         Serial.println("Failed to initialize RTC");
         if (_oled)
         {
-            _oled->clearDisplay();
-            _oled->setCursor(0, 0);
+            _oled->setCursor(0, 10);
             _oled->println("RTC Init Fail");
             _oled->display();
         }
@@ -168,99 +168,107 @@ bool Tenergy32GateWay::begin(uint32_t loraFreq)
     }
     vTaskDelay(1000);
 
-   // --- Ethernet Initialization ---
-Serial.println("Initializing Ethernet...");
-
-// กำหนด MAC address และเตรียม array สำหรับ IP, GW, Subnet
-uint8_t mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-uint8_t ip[4];
-uint8_t gw[4];
-uint8_t subnet[4];
-
-// ใช้งาน DHCP (useDHCP = true) หรือใช้ static (useDHCP = false)
-if (!initEternet(mac, ip, gw, subnet, true))  // เปลี่ยนพารามิเตอร์สุดท้ายเป็น false สำหรับ static
-{
-    Serial.println("Ethernet initialization failed.");
-    if (_oled)
+    // --- Ethernet Initialization (optional) ---
+    if (useEthernet)
     {
-        _oled->clearDisplay();
-        _oled->setCursor(0, 0);
-        _oled->println("Ethernet Fail");
-        _oled->display();
-        vTaskDelay(1000);
-    }
-}
-else
-{
-    Serial.println("Ethernet configured successfully.");
-    Serial.print("IP: ");
-    Serial.print(Ethernet.localIP()[0]);
-    Serial.print(".");
-    Serial.print(Ethernet.localIP()[1]);
-    Serial.print(".");
-    Serial.print(Ethernet.localIP()[2]);
-    Serial.print(".");
-    Serial.print(Ethernet.localIP()[3]);
-    Serial.print("  GW: ");
-    Serial.print(Ethernet.gatewayIP()[0]);
-    Serial.print(".");
-    Serial.print(Ethernet.gatewayIP()[1]);
-    Serial.print(".");
-    Serial.print(Ethernet.gatewayIP()[2]);
-    Serial.print(".");
-    Serial.print(Ethernet.gatewayIP()[3]);
-    Serial.print("  SN: ");
-    Serial.print(Ethernet.subnetMask()[0]);
-    Serial.print(".");
-    Serial.print(Ethernet.subnetMask()[1]);
-    Serial.print(".");
-    Serial.print(Ethernet.subnetMask()[2]);
-    Serial.print(".");
-    Serial.println(Ethernet.subnetMask()[3]);
-    Serial.print("DNS: ");
-    Serial.print(Ethernet.dnsServerIP()[0]);
-    Serial.print(".");
-    Serial.print(Ethernet.dnsServerIP()[1]);
-    Serial.print(".");
-    Serial.print(Ethernet.dnsServerIP()[2]);
-    Serial.print(".");
-    Serial.print(Ethernet.dnsServerIP()[3]);
-    Serial.println();
-    Serial.print("MAC: ");
-    Serial.print(mac[0], HEX);
-    Serial.print(":");
-    Serial.print(mac[1], HEX);
-    Serial.print(":");
-    Serial.print(mac[2], HEX);
-    Serial.print(":");
-    Serial.print(mac[3], HEX);
-    Serial.print(":");
-    Serial.print(mac[4], HEX);
-    Serial.print(":");
-    Serial.print(mac[5], HEX);
-    Serial.println();
+        Serial.println("Initializing Ethernet...");
 
-    // แสดงผลข้อมูลบน OLED
-    if (_oled)
-    {
-        _oled->clearDisplay();
-        _oled->setTextSize(1);
-        _oled->setTextColor(SSD1306_WHITE);
-        _oled->setCursor(0, 0);
-        _oled->println("Ethernet OK");
-        _oled->setCursor(0, 8);
-        _oled->print("IP: ");
-        _oled->println(Ethernet.localIP());
-        _oled->setCursor(0, 16);
-        _oled->print("GW: ");
-        _oled->println(Ethernet.gatewayIP());
-        _oled->setCursor(0, 24);
-        _oled->print("SN: ");
-        _oled->println(Ethernet.subnetMask());
-        _oled->display();
-        vTaskDelay(1000);
+        uint8_t mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+        uint8_t ip[4];
+        uint8_t gw[4];
+        uint8_t subnet[4];
+
+        // ใช้งาน DHCP (useDHCP = true) หรือใช้ static (useDHCP = false)
+        if (_oled)
+        {
+            _oled->clearDisplay();
+            _oled->setCursor(0, 0);
+            _oled->println("Ethernet Init...");
+            _oled->display();
+        }
+
+        if (!initEternet(mac, ip, gw, subnet, true)) // เปลี่ยนพารามิเตอร์สุดท้ายเป็น false สำหรับ static
+        {
+            Serial.println("Ethernet initialization failed.");
+            if (_oled)
+            {
+                _oled->setCursor(0, 10);
+                _oled->println("Ethernet Fail");
+                _oled->display();
+                vTaskDelay(1000);
+            }
+        }
+        else
+        {
+            Serial.println("Ethernet configured successfully.");
+            Serial.print("IP: ");
+            Serial.print(Ethernet.localIP()[0]);
+            Serial.print(".");
+            Serial.print(Ethernet.localIP()[1]);
+            Serial.print(".");
+            Serial.print(Ethernet.localIP()[2]);
+            Serial.print(".");
+            Serial.print(Ethernet.localIP()[3]);
+            Serial.print("  GW: ");
+            Serial.print(Ethernet.gatewayIP()[0]);
+            Serial.print(".");
+            Serial.print(Ethernet.gatewayIP()[1]);
+            Serial.print(".");
+            Serial.print(Ethernet.gatewayIP()[2]);
+            Serial.print(".");
+            Serial.print(Ethernet.gatewayIP()[3]);
+            Serial.print("  SN: ");
+            Serial.print(Ethernet.subnetMask()[0]);
+            Serial.print(".");
+            Serial.print(Ethernet.subnetMask()[1]);
+            Serial.print(".");
+            Serial.print(Ethernet.subnetMask()[2]);
+            Serial.print(".");
+            Serial.println(Ethernet.subnetMask()[3]);
+            Serial.print("DNS: ");
+            Serial.print(Ethernet.dnsServerIP()[0]);
+            Serial.print(".");
+            Serial.print(Ethernet.dnsServerIP()[1]);
+            Serial.print(".");
+            Serial.print(Ethernet.dnsServerIP()[2]);
+            Serial.print(".");
+            Serial.print(Ethernet.dnsServerIP()[3]);
+            Serial.println();
+            Serial.print("MAC: ");
+            Serial.print(mac[0], HEX);
+            Serial.print(":");
+            Serial.print(mac[1], HEX);
+            Serial.print(":");
+            Serial.print(mac[2], HEX);
+            Serial.print(":");
+            Serial.print(mac[3], HEX);
+            Serial.print(":");
+            Serial.print(mac[4], HEX);
+            Serial.print(":");
+            Serial.print(mac[5], HEX);
+            Serial.println();
+
+            // แสดงผลข้อมูลบน OLED
+            if (_oled)
+            {
+                _oled->setTextSize(1);
+                _oled->setTextColor(SSD1306_WHITE);
+                _oled->setCursor(0, 10);
+                _oled->println("Ethernet OK");
+                _oled->setCursor(0, 8);
+                _oled->print("IP: ");
+                _oled->println(Ethernet.localIP());
+                _oled->setCursor(0, 26);
+                _oled->print("GW: ");
+                _oled->println(Ethernet.gatewayIP());
+                _oled->setCursor(0, 34);
+                _oled->print("SN: ");
+                _oled->println(Ethernet.subnetMask());
+                _oled->display();
+                vTaskDelay(1000);
+            }
+        }
     }
-}
     // -------------------------------
 
     // Set up remaining peripheral pins: switches and relay pins
@@ -293,11 +301,11 @@ else
     // Show the library version on the OLED
     showLibraryVersion();
     vTaskDelay(1000);
-    
+
     beep(2, 100);
     return true;
 }
-
+// ...existing code...
 /***********************************************************************
  * FUNCTION:    readSlideSwitch
  * DESCRIPTION: Reads the current state of the slide switch (DIP switch).
@@ -951,14 +959,14 @@ bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, uint8
     pinMode(PIN_W5500_ENABLE, OUTPUT);
     digitalWrite(PIN_W5500_ENABLE, LOW);
     Ethernet.init(PIN_W5500_ENABLE);
-    
+
     if (useDHCP)
     {
         // เริ่มต้น Ethernet โดยใช้ DHCP
         Ethernet.begin(mac);
         // รอให้การรับค่า DHCP เสร็จสิ้น
         delay(2000);
-    
+
         // ตรวจสอบว่ามีการรับค่า IP จาก DHCP หรือไม่
         IPAddress local = Ethernet.localIP();
         if (local == IPAddress(0, 0, 0, 0))
@@ -966,15 +974,15 @@ bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, uint8
             Serial.println("DHCP configuration failed.");
             return false;
         }
-    
+
         // คัดลอกค่า IP, gateway และ subnet mask ที่ได้จาก DHCP กลับไปยัง array ที่ส่งเข้ามา
         for (uint8_t i = 0; i < 4; i++)
         {
-            ip[i]     = local[i];
-            gw[i]     = Ethernet.gatewayIP()[i];
+            ip[i] = local[i];
+            gw[i] = Ethernet.gatewayIP()[i];
             subnet[i] = Ethernet.subnetMask()[i];
         }
-    
+
         Serial.println("Ethernet configured successfully with DHCP.");
     }
     else
@@ -985,25 +993,25 @@ bool Tenergy32GateWay::initEternet(uint8_t *mac, uint8_t *ip, uint8_t *gw, uint8
         IPAddress subnet_addr(subnet[0], subnet[1], subnet[2], subnet[3]);
         // กำหนด DNS เริ่มต้น (เช่น Google DNS)
         IPAddress dns(8, 8, 8, 8);
-    
+
         Ethernet.begin(mac, ip_addr, dns, gw_addr, subnet_addr);
         delay(1000);
-    
+
         IPAddress local = Ethernet.localIP();
         if (local == IPAddress(0, 0, 0, 0))
         {
             Serial.println("Static IP configuration failed.");
             return false;
         }
-    
+
         // คัดลอกค่า IP, gateway และ subnet mask กลับไปยัง array (อาจมีประโยชน์ในการตรวจสอบ)
         for (uint8_t i = 0; i < 4; i++)
         {
-            ip[i]     = local[i];
-            gw[i]     = Ethernet.gatewayIP()[i];
+            ip[i] = local[i];
+            gw[i] = Ethernet.gatewayIP()[i];
             subnet[i] = Ethernet.subnetMask()[i];
         }
-    
+
         Serial.println("Ethernet configured successfully with static IP.");
     }
     return true;
@@ -1031,7 +1039,7 @@ bool Tenergy32GateWay::initEternet(uint8_t *mac, bool useDHCP)
 
         // Check if DHCP succeeded by verifying local IP
         IPAddress local = Ethernet.localIP();
-        if (local == IPAddress(0,0,0,0))
+        if (local == IPAddress(0, 0, 0, 0))
         {
             Serial.println("DHCP configuration failed.");
             return false;
