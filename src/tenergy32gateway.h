@@ -7,7 +7,7 @@
  * Hardware     :     tenergy32gateway
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29/04/2025
- * Revision     :     2.3
+ * Revision     :     2.4
  * Rev1.0       :     Original
  * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
                 :     Add Example for RTC test
@@ -16,6 +16,7 @@
  * Rev2.2       :     Swap parameter of begin() function [2025-05-13]
  * Rev2.3       :     ใช้ค่า Mac Address จากฟังก์ชั่น esp_read_mac(mac, ESP_MAC_ETH) แทนที่จะใช้เป็นการกำหนดค่า
  *                    เองในฟังก์ชั่น initEternet() [2025-05-14]
+ * Rev2.4       :     เพิ่มฟ sync timezone สำหรับการตั้งค่าเวลาในฟังก์ชั่น setDateTime() [2025-05-14]
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -86,16 +87,15 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "2.3"; // Library version
+    const String _version = "2.4"; // Library version
 
 public:
     Tenergy32GateWay();
-    
+
     // show the library version
     void showLibraryVersion();
 
     // Initialize the Tenergy32 Gateway board
-    // bool begin(uint32_t loraFreq=443E6, bool useEthernet=false);
     bool begin(bool useEthernet = false, uint32_t loraFreq = 443E6);
 
     // Switches and sensors

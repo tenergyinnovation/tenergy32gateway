@@ -3,6 +3,8 @@
 #include <RTClib.h>
 #include <Ethernet.h>
 #include <esp_system.h>
+#include <EthernetUdp.h>
+#include <Dns.h>
 
 // Initialize static instance pointer to NULL.
 Tenergy32GateWay *Tenergy32GateWay::_instance = nullptr;
@@ -51,22 +53,21 @@ void Tenergy32GateWay::showLibraryVersion()
  ***********************************************************************/
 bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
 {
-    // Initialize serial communication
     Serial.begin(115200);
     Serial.println("Initializing Tenergy32GateWay...");
 
-    // Set up pin modes for buzzer, charger reset and built-in LED
+    // Pin modes
     Serial.println("Setting pin modes...");
     pinMode(PIN_BUZZER, OUTPUT);
     digitalWrite(PIN_BUZZER, LOW);
     pinMode(PIN_BUILTIN_LED, OUTPUT);
     digitalWrite(PIN_BUILTIN_LED, LOW);
 
-    // Set up I2C bus
+    // I2C
     Serial.println("Initializing I2C...");
     initI2C();
 
-    // Initialize OLED display
+    // OLED
     Serial.println("Initializing OLED...");
     _oled = new Adafruit_SSD1306(128, 32, &Wire);
     if (!_oled->begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS))
@@ -80,7 +81,7 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
     _oled->display();
     vTaskDelay(1000);
 
-    // Initialize LoRa module
+    // LoRa
     Serial.println("Initializing LoRa...");
     if (_oled)
     {
@@ -118,17 +119,14 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         }
     }
 
-    // --- Ethernet Initialization (optional) ---
+    // Ethernet (optional)
     if (useEthernet)
     {
         Serial.println("Initializing Ethernet...");
         uint8_t mac[6];
-        esp_read_mac(mac, ESP_MAC_ETH); // ใช้ MAC ของ Ethernet
-        uint8_t ip[4];
-        uint8_t gw[4];
-        uint8_t subnet[4];
+        esp_read_mac(mac, ESP_MAC_ETH);
+        uint8_t ip[4], gw[4], subnet[4];
 
-        // ใช้งาน DHCP (useDHCP = true) หรือใช้ static (useDHCP = false)
         if (_oled)
         {
             _oled->clearDisplay();
@@ -137,7 +135,7 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
             _oled->display();
         }
 
-        if (!initEternet(mac, ip, gw, subnet, true)) // เปลี่ยนพารามิเตอร์สุดท้ายเป็น false สำหรับ static
+        if (!initEternet(mac, ip, gw, subnet, true))
         {
             Serial.println("Ethernet initialization failed.");
             if (_oled)
@@ -152,53 +150,22 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         {
             Serial.println("Ethernet configured successfully.");
             Serial.print("IP: ");
-            Serial.print(Ethernet.localIP()[0]);
-            Serial.print(".");
-            Serial.print(Ethernet.localIP()[1]);
-            Serial.print(".");
-            Serial.print(Ethernet.localIP()[2]);
-            Serial.print(".");
-            Serial.print(Ethernet.localIP()[3]);
-            Serial.print("  GW: ");
-            Serial.print(Ethernet.gatewayIP()[0]);
-            Serial.print(".");
-            Serial.print(Ethernet.gatewayIP()[1]);
-            Serial.print(".");
-            Serial.print(Ethernet.gatewayIP()[2]);
-            Serial.print(".");
-            Serial.print(Ethernet.gatewayIP()[3]);
-            Serial.print("  SN: ");
-            Serial.print(Ethernet.subnetMask()[0]);
-            Serial.print(".");
-            Serial.print(Ethernet.subnetMask()[1]);
-            Serial.print(".");
-            Serial.print(Ethernet.subnetMask()[2]);
-            Serial.print(".");
-            Serial.println(Ethernet.subnetMask()[3]);
+            Serial.println(Ethernet.localIP());
+            Serial.print("GW: ");
+            Serial.println(Ethernet.gatewayIP());
+            Serial.print("SN: ");
+            Serial.println(Ethernet.subnetMask());
             Serial.print("DNS: ");
-            Serial.print(Ethernet.dnsServerIP()[0]);
-            Serial.print(".");
-            Serial.print(Ethernet.dnsServerIP()[1]);
-            Serial.print(".");
-            Serial.print(Ethernet.dnsServerIP()[2]);
-            Serial.print(".");
-            Serial.print(Ethernet.dnsServerIP()[3]);
-            Serial.println();
+            Serial.println(Ethernet.dnsServerIP());
             Serial.print("MAC: ");
-            Serial.print(mac[0], HEX);
-            Serial.print(":");
-            Serial.print(mac[1], HEX);
-            Serial.print(":");
-            Serial.print(mac[2], HEX);
-            Serial.print(":");
-            Serial.print(mac[3], HEX);
-            Serial.print(":");
-            Serial.print(mac[4], HEX);
-            Serial.print(":");
-            Serial.print(mac[5], HEX);
+            for (int i = 0; i < 6; i++)
+            {
+                Serial.print(mac[i], HEX);
+                if (i < 5)
+                    Serial.print(":");
+            }
             Serial.println();
 
-            // แสดงผลข้อมูลบน OLED
             if (_oled)
             {
                 _oled->setTextSize(1);
@@ -220,7 +187,7 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         }
     }
 
-    // RTC initialization
+    // RTC
     Serial.println("Initializing RTC...");
     _rtc = new RTC_DS3231();
     if (!_rtc->begin())
@@ -236,6 +203,55 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
     else
     {
         Serial.println("RTC initialized successfully.");
+
+        // --- Sync RTC from NTP if Ethernet is connected ---
+        bool timeSynced = false;
+        if (useEthernet && Ethernet.linkStatus() == LinkON)
+        {
+            EthernetUDP udp;
+            const char *ntpServer = "pool.ntp.org";
+            const int ntpPacketSize = 48;
+            byte packetBuffer[ntpPacketSize];
+            IPAddress timeServerIP;
+
+            DNSClient dns;
+            dns.begin(Ethernet.dnsServerIP());
+            if (dns.getHostByName(ntpServer, timeServerIP) == 1)
+            {
+                if (udp.begin(2390))
+                {
+                    memset(packetBuffer, 0, ntpPacketSize);
+                    packetBuffer[0] = 0b11100011;
+                    udp.beginPacket(timeServerIP, 123);
+                    udp.write(packetBuffer, ntpPacketSize);
+                    udp.endPacket();
+
+                    delay(1000);
+                    int cb = udp.parsePacket();
+                    if (cb)
+                    {
+                        udp.read(packetBuffer, ntpPacketSize);
+                        unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+                        unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+                        unsigned long secsSince1900 = highWord << 16 | lowWord;
+                        const unsigned long seventyYears = 2208988800UL;
+                        unsigned long epoch = secsSince1900 - seventyYears;
+
+                        // --- ปรับเวลาเป็นเวลาไทย (UTC+7) ---
+                        epoch += 7 * 3600;
+
+                        time_t rawtime = epoch;
+                        struct tm *ti = gmtime(&rawtime);
+
+                        _rtc->adjust(DateTime(ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday, ti->tm_hour, ti->tm_min, ti->tm_sec));
+                        Serial.println("RTC synced from NTP server (THAILAND).");
+                        timeSynced = true;
+                    }
+                    udp.stop();
+                }
+            }
+        }
+
         DateTime now = _rtc->now();
         Serial.print("Current RTC Date/Time: ");
         Serial.print(now.year(), DEC);
@@ -243,17 +259,21 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         Serial.print(now.month(), DEC);
         Serial.print('/');
         Serial.print(now.day(), DEC);
-        Serial.print(" ");
+        Serial.print(' ');
         Serial.print(now.hour(), DEC);
         Serial.print(':');
         Serial.print(now.minute(), DEC);
         Serial.print(':');
         Serial.println(now.second(), DEC);
+
         if (_oled)
         {
             _oled->clearDisplay();
             _oled->setCursor(0, 0);
-            _oled->println("RTC Init OK");
+            if (timeSynced)
+                _oled->println("RTC Sync OK");
+            else
+                _oled->println("RTC Init OK");
             _oled->setCursor(0, 10);
             _oled->print(now.year());
             _oled->print('/');
@@ -271,14 +291,11 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
     }
     vTaskDelay(1000);
 
-    // -------------------------------
-
-    // Set up remaining peripheral pins: switches and relay pins
+    // Peripheral pins
     Serial.println("Setting additional peripheral pin modes...");
     pinMode(PIN_DIP_SWITCH, INPUT);
     pinMode(PIN_SW1, INPUT_PULLUP);
     pinMode(PIN_SW2, INPUT_PULLUP);
-    // Initialize relay pins
     pinMode(PIN_RELAY1, OUTPUT);
     digitalWrite(PIN_RELAY1, LOW);
     pinMode(PIN_RELAY2, OUTPUT);
@@ -300,7 +317,6 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         vTaskDelay(1000);
     }
 
-    // Show the library version on the OLED
     showLibraryVersion();
     vTaskDelay(1000);
 
