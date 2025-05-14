@@ -2,6 +2,7 @@
 #include "tenergy32gateway.h"
 #include <RTClib.h>
 #include <Ethernet.h>
+#include <esp_system.h>
 
 // Initialize static instance pointer to NULL.
 Tenergy32GateWay *Tenergy32GateWay::_instance = nullptr;
@@ -117,63 +118,12 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
         }
     }
 
-    // RTC initialization
-    Serial.println("Initializing RTC...");
-    _rtc = new RTC_DS3231();
-    if (!_rtc->begin())
-    {
-        Serial.println("Failed to initialize RTC");
-        if (_oled)
-        {
-            _oled->setCursor(0, 10);
-            _oled->println("RTC Init Fail");
-            _oled->display();
-        }
-    }
-    else
-    {
-        Serial.println("RTC initialized successfully.");
-        DateTime now = _rtc->now();
-        Serial.print("Current RTC Date/Time: ");
-        Serial.print(now.year(), DEC);
-        Serial.print('/');
-        Serial.print(now.month(), DEC);
-        Serial.print('/');
-        Serial.print(now.day(), DEC);
-        Serial.print(" ");
-        Serial.print(now.hour(), DEC);
-        Serial.print(':');
-        Serial.print(now.minute(), DEC);
-        Serial.print(':');
-        Serial.println(now.second(), DEC);
-        if (_oled)
-        {
-            _oled->clearDisplay();
-            _oled->setCursor(0, 0);
-            _oled->println("RTC Init OK");
-            _oled->setCursor(0, 10);
-            _oled->print(now.year());
-            _oled->print('/');
-            _oled->print(now.month());
-            _oled->print('/');
-            _oled->print(now.day());
-            _oled->setCursor(0, 20);
-            _oled->print(now.hour());
-            _oled->print(':');
-            _oled->print(now.minute());
-            _oled->print(':');
-            _oled->print(now.second());
-            _oled->display();
-        }
-    }
-    vTaskDelay(1000);
-
     // --- Ethernet Initialization (optional) ---
     if (useEthernet)
     {
         Serial.println("Initializing Ethernet...");
-
-        uint8_t mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+        uint8_t mac[6];
+        esp_read_mac(mac, ESP_MAC_ETH); // ใช้ MAC ของ Ethernet
         uint8_t ip[4];
         uint8_t gw[4];
         uint8_t subnet[4];
@@ -253,15 +203,15 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
             {
                 _oled->setTextSize(1);
                 _oled->setTextColor(SSD1306_WHITE);
-                _oled->setCursor(0, 10);
-                _oled->println("Ethernet OK");
                 _oled->setCursor(0, 8);
+                _oled->println("Ethernet OK");
+                _oled->setCursor(0, 16);
                 _oled->print("IP: ");
                 _oled->println(Ethernet.localIP());
-                _oled->setCursor(0, 26);
+                _oled->setCursor(0, 25);
                 _oled->print("GW: ");
                 _oled->println(Ethernet.gatewayIP());
-                _oled->setCursor(0, 34);
+                _oled->setCursor(0, 32);
                 _oled->print("SN: ");
                 _oled->println(Ethernet.subnetMask());
                 _oled->display();
@@ -269,6 +219,58 @@ bool Tenergy32GateWay::begin(bool useEthernet, uint32_t loraFreq)
             }
         }
     }
+
+    // RTC initialization
+    Serial.println("Initializing RTC...");
+    _rtc = new RTC_DS3231();
+    if (!_rtc->begin())
+    {
+        Serial.println("Failed to initialize RTC");
+        if (_oled)
+        {
+            _oled->setCursor(0, 10);
+            _oled->println("RTC Init Fail");
+            _oled->display();
+        }
+    }
+    else
+    {
+        Serial.println("RTC initialized successfully.");
+        DateTime now = _rtc->now();
+        Serial.print("Current RTC Date/Time: ");
+        Serial.print(now.year(), DEC);
+        Serial.print('/');
+        Serial.print(now.month(), DEC);
+        Serial.print('/');
+        Serial.print(now.day(), DEC);
+        Serial.print(" ");
+        Serial.print(now.hour(), DEC);
+        Serial.print(':');
+        Serial.print(now.minute(), DEC);
+        Serial.print(':');
+        Serial.println(now.second(), DEC);
+        if (_oled)
+        {
+            _oled->clearDisplay();
+            _oled->setCursor(0, 0);
+            _oled->println("RTC Init OK");
+            _oled->setCursor(0, 10);
+            _oled->print(now.year());
+            _oled->print('/');
+            _oled->print(now.month());
+            _oled->print('/');
+            _oled->print(now.day());
+            _oled->setCursor(0, 20);
+            _oled->print(now.hour());
+            _oled->print(':');
+            _oled->print(now.minute());
+            _oled->print(':');
+            _oled->print(now.second());
+            _oled->display();
+        }
+    }
+    vTaskDelay(1000);
+
     // -------------------------------
 
     // Set up remaining peripheral pins: switches and relay pins

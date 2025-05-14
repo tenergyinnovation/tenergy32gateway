@@ -7,13 +7,15 @@
  * Hardware     :     tenergy32gateway
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29/04/2025
- * Revision     :     2.2
+ * Revision     :     2.3
  * Rev1.0       :     Original
  * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
                 :     Add Example for RTC test
  * Rev2.0       :     Include Ethernet library
- * Rev2.1       :     Add Ethernet Enable/Disable [2025-05-03]
- * Rev2.2       :     Swap parameter of begin() function [2025-05-03]
+ * Rev2.1       :     Add Ethernet Enable/Disable [2025-05-13]
+ * Rev2.2       :     Swap parameter of begin() function [2025-05-13]
+ * Rev2.3       :     ใช้ค่า Mac Address จากฟังก์ชั่น esp_read_mac(mac, ESP_MAC_ETH) แทนที่จะใช้เป็นการกำหนดค่า
+ *                    เองในฟังก์ชั่น initEternet() [2025-05-14]
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -84,7 +86,7 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "2.2"; // Library version
+    const String _version = "2.3"; // Library version
 
 public:
     Tenergy32GateWay();
