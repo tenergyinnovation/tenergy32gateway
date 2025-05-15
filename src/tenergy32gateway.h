@@ -7,7 +7,7 @@
  * Hardware     :     tenergy32gateway
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29/04/2025
- * Revision     :     2.4
+ * Revision     :     2.5
  * Rev1.0       :     Original
  * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
                 :     Add Example for RTC test
@@ -17,6 +17,7 @@
  * Rev2.3       :     ใช้ค่า Mac Address จากฟังก์ชั่น esp_read_mac(mac, ESP_MAC_ETH) แทนที่จะใช้เป็นการกำหนดค่า
  *                    เองในฟังก์ชั่น initEternet() [2025-05-14]
  * Rev2.4       :     เพิ่มฟ sync timezone สำหรับการตั้งค่าเวลาในฟังก์ชั่น setDateTime() [2025-05-14]
+ * Rev2.5       :     Add clearOLED() function [2025-05-15]
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -87,7 +88,7 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "2.4"; // Library version
+    const String _version = "2.5"; // Library version
 
 public:
     Tenergy32GateWay();
@@ -141,6 +142,11 @@ public:
     // Displays text on up to 4 separate lines on the OLED.
     // Each parameter is optional (default empty string) and at least line1 should be provided.
     void displayOLEDLines(const char *line1, const char *line2 = "", const char *line3 = "", const char *line4 = "");
+
+        // clearOLED
+    // Clears the OLED display and resets the cursor position.
+    // This function is useful for preparing the display for new content.
+    void clearOLED();
 
     bool initLCD(uint8_t address = LCD_ADDRESS);
     void displayLCD(const char *text, uint8_t col = 0, uint8_t row = 0);

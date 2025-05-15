@@ -722,6 +722,22 @@ void Tenergy32GateWay::displayOLEDLines(const char *line1, const char *line2, co
 }
 
 /***********************************************************************
+ * FUNCTION:    clearOLED
+ * DESCRIPTION: Clears the OLED display and resets the cursor position.
+ * PARAMETERS:  none
+ * RETURNED:    none
+ ***********************************************************************/
+void Tenergy32GateWay::clearOLED()
+{
+    if (_oled)
+    {
+        _oled->clearDisplay();
+        _oled->setCursor(0, 0);
+        _oled->display();
+    }
+}
+
+/***********************************************************************
  * FUNCTION:    marioSound
  * DESCRIPTION: Plays a melody (Mario theme) using the buzzer.
  ***********************************************************************/
