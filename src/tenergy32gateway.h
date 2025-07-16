@@ -7,7 +7,7 @@
  * Hardware     :     tenergy32gateway
  * Author       :     Tenergy Innovation Co., Ltd.
  * Date         :     29/04/2025
- * Revision     :     2.5
+ * Revision     :     2.6
  * Rev1.0       :     Original
  * Rev1.1       :     Add Example for LoRa receive test [2025-05-02]
                 :     Add Example for RTC test
@@ -18,6 +18,7 @@
  *                    เองในฟังก์ชั่น initEternet() [2025-05-14]
  * Rev2.4       :     เพิ่มฟ sync timezone สำหรับการตั้งค่าเวลาในฟังก์ชั่น setDateTime() [2025-05-14]
  * Rev2.5       :     Add clearOLED() function [2025-05-15]
+ * Rev2.6       :     Improve initLCD() function for I2C LCD [2025-07-17]
  * website      :     http://www.tenergyinnovation.co.th
  * Email        :     uten.boonliam@tenergyinnovation.co.th
  * TEL          :     +66 89-140-7205
@@ -88,7 +89,7 @@
 class Tenergy32GateWay
 {
 public:
-    const String _version = "2.5"; // Library version
+    const String _version = "2.6"; // Library version
 
 public:
     Tenergy32GateWay();
@@ -148,7 +149,7 @@ public:
     // This function is useful for preparing the display for new content.
     void clearOLED();
 
-    bool initLCD(uint8_t address = LCD_ADDRESS);
+    bool initLCD(uint8_t address = LCD_ADDRESS, uint8_t cols = 16, uint8_t rows = 2);
     void displayLCD(const char *text, uint8_t col = 0, uint8_t row = 0);
 
     // Sound functions

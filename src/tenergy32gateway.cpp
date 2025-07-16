@@ -654,12 +654,14 @@ void Tenergy32GateWay::displayOLEDInfo()
 /***********************************************************************
  * FUNCTION:    initLCD
  * DESCRIPTION: Initializes the LCD display using the I2C bus.
- * PARAMETERS:  addr - I2C address of the LCD display.
+ * PARAMETERS:  addr - I2C address of the LCD display,
+ *              cols - number of columns,
+ *              rows - number of rows.
  * RETURNED:    true if initialization is successful.
  ***********************************************************************/
-bool Tenergy32GateWay::initLCD(uint8_t addr)
+bool Tenergy32GateWay::initLCD(uint8_t addr,uint8_t cols, uint8_t rows)
 {
-    _lcd = new LiquidCrystal_I2C(addr, 20, 4);
+    _lcd = new LiquidCrystal_I2C(addr, cols, rows);
     _lcd->init();
     _lcd->backlight();
     return true;
